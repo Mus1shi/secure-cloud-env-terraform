@@ -3,11 +3,11 @@ terraform {
 }
 
 locals {
-  prefix             = var.project_name
-  vnet_name          = "${local.prefix}-vnet"
-  public_subnet_name = "${local.prefix}-snet-public"
-  private_subnet_name= "${local.prefix}-snet-private"
-  nsg_public_name    = "${local.prefix}-nsg-public"
+  prefix              = var.project_name
+  vnet_name           = "${local.prefix}-vnet"
+  public_subnet_name  = "${local.prefix}-snet-public"
+  private_subnet_name = "${local.prefix}-snet-private"
+  nsg_public_name     = "${local.prefix}-nsg-public"
 }
 
 ############################################
@@ -18,8 +18,8 @@ resource "azurerm_virtual_network" "this" {
   location            = var.location
   resource_group_name = var.resource_group_name
 
-  address_space       = [var.vnet_cidr]
-  }
+  address_space = [var.vnet_cidr]
+}
 
 ############################################
 # 2) Subnets
@@ -29,7 +29,7 @@ resource "azurerm_subnet" "public" {
   resource_group_name  = var.resource_group_name
   virtual_network_name = azurerm_virtual_network.this.name
 
-  address_prefixes     = [var.public_subnet_cidr]
+  address_prefixes = [var.public_subnet_cidr]
 }
 
 resource "azurerm_subnet" "private" {
@@ -37,8 +37,8 @@ resource "azurerm_subnet" "private" {
   resource_group_name  = var.resource_group_name
   virtual_network_name = azurerm_virtual_network.this.name
 
-  address_prefixes     = [var.private_subnet_cidr]
-  }
+  address_prefixes = [var.private_subnet_cidr]
+}
 
 ############################################
 # 3) Network Security Group (pour le subnet public)
@@ -57,7 +57,7 @@ resource "azurerm_network_security_group" "public" {
     protocol                   = "Tcp"
     source_port_range          = "*"
     destination_port_range     = "22"
-    source_address_prefix      = var.my_ip_cidr     
+    source_address_prefix      = var.my_ip_cidr
     destination_address_prefix = "*"
   }
 
