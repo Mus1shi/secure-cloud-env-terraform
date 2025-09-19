@@ -21,11 +21,24 @@ module "compute" {
   resource_group_name = azurerm_resource_group.rg.name
   location            = azurerm_resource_group.rg.location
 
-  vm_name   = "vm-bastion"
-  subnet_id = module.network.public_subnet_id
+  vm_name        = "vm-bastion"
+  subnet_id      = module.network.public_subnet_id
   admin_username = "azureuser"
-  vm_size = "Standard_B1s"
+  vm_size        = "Standard_B1s"
 
-  
+
 }
 
+module "compute_private" {
+  source              = "./modules/compute_private"
+  resource_group_name = azurerm_resource_group.rg.name
+  location            = azurerm_resource_group.rg.location
+
+  vm_name            = "vm-private"
+  subnet_id          = module.network.private_subnet_id
+  public_subnet_cidr = "10.0.1.0/24" # ton subnet public
+
+  admin_username = "azureuser"
+  vm_size        = "Standard_B1s"
+
+}
