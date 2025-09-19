@@ -2,7 +2,6 @@ locals {
   use_inline_key = var.ssh_public_key != null && trim(var.ssh_public_key) != ""
 }
 
-# Génère une clé si aucune n'est fournie (clé dédiée à la VM privée)
 resource "tls_private_key" "private" {
   count     = local.use_inline_key ? 0 : 1
   algorithm = "RSA"
@@ -16,14 +15,12 @@ resource "local_file" "private_key_pem" {
   file_permission = "0600"
 }
 
-# NSG strict pour le subnet privé
 resource "azurerm_network_security_group" "private" {
   name                = "${var.vm_name}-nsg"
   location            = var.location
   resource_group_name = var.resource_group_name
 }
 
-# Autorise SSH uniquement depuis le subnet public (où réside la bastion)
 resource "azurerm_network_security_rule" "allow_ssh_from_public_subnet" {
   name                        = "allow-ssh-from-public-subnet"
   priority                    = 100
@@ -38,7 +35,6 @@ resource "azurerm_network_security_rule" "allow_ssh_from_public_subnet" {
   network_security_group_name = azurerm_network_security_group.private.name
 }
 
-# Bloque le trafic Intra-VNet (sinon la règle Azure par défaut AllowVNetInBound 65000 ouvrirait trop large)
 resource "azurerm_network_security_rule" "deny_vnet_inbound" {
   name                        = "deny-vnet-inbound"
   priority                    = 200
@@ -53,7 +49,6 @@ resource "azurerm_network_security_rule" "deny_vnet_inbound" {
   network_security_group_name = azurerm_network_security_group.private.name
 }
 
-# Blocage de sécurité par défaut (tout le reste)
 resource "azurerm_network_security_rule" "deny_all_inbound" {
   name                        = "deny-all-inbound"
   priority                    = 300
@@ -68,13 +63,11 @@ resource "azurerm_network_security_rule" "deny_all_inbound" {
   network_security_group_name = azurerm_network_security_group.private.name
 }
 
-# Association NSG ↔ subnet privé
 resource "azurerm_subnet_network_security_group_association" "private_assoc" {
   subnet_id                 = var.subnet_id
   network_security_group_id = azurerm_network_security_group.private.id
 }
 
-# NIC (pas d'IP publique)
 resource "azurerm_network_interface" "private" {
   name                = "${var.vm_name}-nic"
   location            = var.location
@@ -87,7 +80,6 @@ resource "azurerm_network_interface" "private" {
   }
 }
 
-# VM Linux privée (sans IP publique)
 resource "azurerm_linux_virtual_machine" "private" {
   name                = var.vm_name
   location            = var.location
