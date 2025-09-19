@@ -23,3 +23,10 @@ output "private_vm_admin_username" {
 output "private_vm_key_path" {
   value = module.compute_private.private_key_path
 }
+
+output "keyvault_name" {
+  value = module.keyvault.keyvault_name
+}
+output "keyvault_uri" {
+  value = module.keyvault.keyvault_uri
+}

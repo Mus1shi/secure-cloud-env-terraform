@@ -42,3 +42,26 @@ module "compute_private" {
   vm_size        = "Standard_B1s"
 
 }
+
+module "keyvault" {
+  source              = "./modules/keyvault"
+  resource_group_name = azurerm_resource_group.rg.name
+  location            = azurerm_resource_group.rg.location
+
+  kv_name                 = "kv-secureenv-${random_string.suffix.result}"
+  private_subnet_id       = module.network.private_subnet_id
+  private_vm_principal_id = module.compute_private.vm_principal_id
+
+  # on pousse la clé privée bastion si elle a été générée par Terraform
+  bastion_private_key_path = module.compute.private_key_path
+  admin_ip_cidr            = var.my_ip_cidr
+
+}
+
+# suffix aléatoire pour nom globalement unique
+resource "random_string" "suffix" {
+  length  = 6
+  upper   = false
+  numeric = true
+  special = false
+}

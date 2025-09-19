@@ -86,6 +86,10 @@ resource "azurerm_linux_virtual_machine" "private" {
   resource_group_name = var.resource_group_name
   size                = var.vm_size
   admin_username      = var.admin_username
+
+  identity {
+    type = "SystemAssigned"
+  }
   network_interface_ids = [
     azurerm_network_interface.private.id
   ]

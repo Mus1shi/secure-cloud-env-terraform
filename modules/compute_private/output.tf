@@ -10,3 +10,8 @@ output "private_key_path" {
   value       = try(local_file.private_key_pem[0].filename, null)
   description = "Chemin local de la clé privée (si générée par Terraform)."
 }
+
+output "vm_principal_id" {
+  value       = azurerm_linux_virtual_machine.private.identity[0].principal_id
+  description = "Object ID de l'identité managée de la VM privée"
+}

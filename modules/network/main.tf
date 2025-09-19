@@ -37,7 +37,8 @@ resource "azurerm_subnet" "private" {
   resource_group_name  = var.resource_group_name
   virtual_network_name = azurerm_virtual_network.this.name
 
-  address_prefixes = [var.private_subnet_cidr]
+  service_endpoints = ["Microsoft.KeyVault"]
+  address_prefixes  = [var.private_subnet_cidr]
 }
 
 ############################################
