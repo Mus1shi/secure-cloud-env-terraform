@@ -65,3 +65,23 @@ resource "random_string" "suffix" {
   numeric = true
   special = false
 }
+
+module "monitoring" {
+  source              = "./modules/monitoring"
+  resource_group_name = azurerm_resource_group.rg.name
+  location            = azurerm_resource_group.rg.location
+
+  vm_ids = [
+    module.compute.vm_id,
+    module.compute_private.vm_id,
+  ]
+
+  key_vault_id = module.keyvault.keyvault_id
+
+  nsg_ids = [
+    module.network.public_nsg_id,
+    module.compute_private.private_nsg_id,
+  ]
+
+ alert_email = "tommyprobx@hotmail.com"
+}

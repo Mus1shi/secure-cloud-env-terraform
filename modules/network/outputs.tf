@@ -17,3 +17,7 @@ output "private_subnet_id" {
   description = "ID of the private subnet"
   value       = azurerm_subnet.private.id
 }
+
+output "public_nsg_id" {
+  value = azurerm_network_security_group.public.id
+}

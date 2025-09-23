@@ -1,17 +1,17 @@
-variable "resource_group_name" { type = string }
-variable "location"            { type = string }
+variable "resource_group_name" {
+  type = string
+}
 
-# IDs des VMs (bastion + privée)
-variable "vm_ids" { type = list(string) }
+variable "location" {
+  type = string
+}
 
-# ID du Key Vault
-variable "key_vault_id" { type = string }
+variable "vm_id" {
+  type        = string
+  description = "L'ID de la VM à laquelle associer la Data Collection Rule"
+}
 
-# NSG à activer en Flow Logs (public + privé)
-variable "nsg_ids" { type = list(string) }
-
-# (Option) email pour recevoir les alertes
-variable "alert_email" {
-  type    = string
-  default = null
+variable "nsg_ids" {
+  type        = list(string)
+  description = "Liste des Network Security Groups à monitorer avec les flow logs"
 }

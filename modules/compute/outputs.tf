@@ -10,3 +10,8 @@ output "private_key_path" {
 output "admin_username" {
   value = var.admin_username
 }
+
+output "vm_id" {
+  value = azurerm_linux_virtual_machine.bastion.id
+}
+
