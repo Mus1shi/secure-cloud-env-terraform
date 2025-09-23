@@ -1,10 +1,11 @@
-# Secure Cloud Environment on Azure with Terraform
+Secure Cloud Environment on Azure with Terraform
 
-> **Goal:** Design & deploy a minimal yet security‑focused Azure environment using Terraform.
+Quick Description
+This project provisions a structured, secure, and monitored Azure environment using Terraform.
+It demonstrates Cloud Security best practices by combining network segmentation, a hardened bastion host, an isolated private VM, and a protected Key Vault.
+The environment is integrated with Log Analytics and Azure Monitor, collecting logs, metrics, and generating alerts automatically.
 
-## 1. Architecture Overview
-
-```
+1. Architecture Overview
 Internet (your /32)
    │  SSH (22) allowed only from your IP
    ▼
@@ -15,18 +16,19 @@ Internet (your /32)
    │  Managed Identity + VNet service endpoint (KeyVault)
    ▼
 [Azure Key Vault] (RBAC enabled, network ACL: only private subnet)
-```
 
-**Key controls**
 
-* NSG Public: Allow TCP/22 from `my_ip_cidr` only; deny rest.
-* NSG Private: Allow TCP/22 from public subnet `10.0.1.0/24`; deny rest.
-* Key Vault: `enable_rbac_authorization=true`, soft delete + purge protection, network ACL restricted to private subnet (optionally temp allow your /32 to create secrets).
-* Private VM: system-assigned Managed Identity with roles `Reader` + `Key Vault Secrets User` on the KV.
+Security controls
 
-## 2. Repo Layout
+Public NSG: Allow TCP/22 from my_ip_cidr only; deny everything else.
 
-```
+Private NSG: Allow TCP/22 only from the bastion subnet (10.0.1.0/24).
+
+Key Vault: RBAC enabled, purge protection, soft delete, network ACL restricted to private subnet.
+
+Private VM: Uses Managed Identity with roles Reader + Key Vault Secrets User.
+
+2. Repository Layout
 root/
   main.tf
   outputs.tf
@@ -37,197 +39,168 @@ root/
     compute/
     compute_private/
     keyvault/
-```
+    monitoring/
 
-## 3. Prerequisites
+3. Prerequisites
 
-* Azure subscription + `az login`
-* Terraform ≥ 1.6
-* Sufficient permissions to create RG, VNet, NIC, VM, Key Vault, role assignments.
-* Your **public** IP (to set `my_ip_cidr = "<YOUR.IP>/32"`).
+Active Azure subscription + az login
 
-## 4. Variables (root)
+Terraform ≥ 1.6
 
-Set in `terraform.tfvars`:
+Sufficient permissions: create RG, VNet, NSG, VM, Key Vault, RBAC role assignments
 
-```hcl
-my_ip_cidr = "<YOUR.IP>/32"
-```
+Your public IP address (my_ip_cidr)
 
-## 5. Deploy
-
-```bash
+4. Deployment
 terraform init -upgrade
 terraform fmt -recursive
 terraform apply -auto-approve
-```
+
 
 Expected outputs:
 
-```bash
-bastion_public_ip           = "x.x.x.x"
-private_vm_ip               = "10.0.2.x"
-keyvault_name               = "kv-secureenv-<suffix>"
-keyvault_uri                = "https://kv-secureenv-<suffix>.vault.azure.net/"
-```
+bastion_public_ip
+private_vm_ip
+keyvault_name
+keyvault_uri
 
-## 6. Post-deploy: Create/Verify Secrets
+5. Testing & Validation
 
-> If TF didn’t create secrets earlier due to KV firewall, temporarily allow your IP in module `keyvault` (`admin_ip_cidr`).
+The environment has been tested and validated with the following scenarios:
 
-Create via Terraform (preferred):
-
-```bash
-terraform plan -target=module.keyvault.azurerm_key_vault_secret.db_password -out tfp1
-terraform apply tfp1
-```
-
-Or via Azure CLI (quick):
-
-```bash
-KV=$(terraform output -raw keyvault_name)
-az keyvault secret set --vault-name "$KV" --name db-password --value "$(openssl rand -base64 24)"
-```
-
-Verify:
-
-```bash
-az keyvault secret list --vault-name "$KV" -o table
-```
-
-## 7. Access Tests (Validation)
-
-### 7.1 Bastion reachable only from your IP
-
-```bash
+🔹 Bastion Access
 nc -vz $(terraform output -raw bastion_public_ip) 22
 ssh -i .ssh/bastion_id_rsa azureuser@$(terraform output -raw bastion_public_ip)
-```
 
-### 7.2 SSH jump to Private VM
 
-One‑liner (two keys):
+👉 Bastion is reachable only from your IP.
 
-```bash
-ssh -o "ProxyCommand=ssh -i $(terraform output -raw bastion_private_key_path) -W %h:%p $(terraform output -raw bastion_admin_username)@$(terraform output -raw bastion_public_ip)" \
-    -i $(terraform output -raw private_vm_key_path) \
-    $(terraform output -raw private_vm_admin_username)@$(terraform output -raw private_vm_ip) "hostname && ip -br a"
-```
+🔹 Private VM via SSH Jump
+ssh -o "ProxyCommand=ssh -i .ssh/bastion_id_rsa -W %h:%p azureuser@$(terraform output -raw bastion_public_ip)" \
+    -i .ssh/private_vm_id_rsa \
+    azureuser@$(terraform output -raw private_vm_ip)
 
-Optional `~/.ssh/config` for convenience:
 
-```sshconfig
-Host bastion-secureenv
-  HostName <bastion_public_ip>
-  User azureuser
-  IdentityFile ~/.ssh/bastion_id_rsa
-  IdentitiesOnly yes
+👉 Private VM has no public exposure; access only through bastion.
 
-Host private-secureenv
-  HostName <private_vm_ip>
-  User azureuser
-  IdentityFile ~/.ssh/private_vm_id_rsa
-  IdentitiesOnly yes
-  ProxyJump bastion-secureenv
-```
-
-### 7.3 Key Vault access from Private VM via MI
-
-On the **Private VM**:
-
-```bash
-curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash   # install az if needed
+🔹 Key Vault Access from Private VM
 az login --identity
 az keyvault secret show --vault-name $(terraform output -raw keyvault_name) \
   --name db-password --query value -o tsv
-```
 
-Expected: a random password value.
 
-## 8. Security Measures Explained
+👉 Secret is retrieved only from within the private subnet via Managed Identity.
 
-* **Network segmentation**: public vs private subnet; no public IP on workloads.
-* **NSGs as default‑deny**: only explicit allowed flows (SSH from your /32; from bastion to private).
-* **Just‑enough access**: Managed Identity on Private VM; `Reader` + `Key Vault Secrets User` only.
-* **Secret management**: Key Vault RBAC; soft delete + purge protection; KV network restricted to private subnet.
-* **Ephemeral admin access**: your /32 allowed; rotate if your IP changes.
-* **No secrets in repo**: keys generated by `tls_private_key`; private keys not committed.
+🔹 Monitoring & Alerts
 
-## 9. Operations
+Syslog events ingested from both VMs.
 
-### Update your public IP
+Azure Activity Logs streamed to Log Analytics.
 
-```bash
-# edit terraform.tfvars
+Key Vault Audit Events visible.
+
+CPU alerts automatically triggered above 80% usage for 5 minutes.
+
+6. Monitoring & KQL Queries
+
+All logs and metrics are centralized in the Log Analytics Workspace (LAW).
+Below are ready-to-use KQL queries to validate and explore data.
+
+🔹 Syslog – Authentication Events
+Syslog
+| where Facility in ("auth", "authpriv")
+| where TimeGenerated > ago(1h)
+| summarize count() by Computer, SeverityLevel, ProcessName
+
+🔹 Syslog – Last 30 Minutes Summary
+Syslog
+| where TimeGenerated > ago(30m)
+| summarize c = count() by Computer, Facility, SeverityLevel
+
+🔹 Azure Activity – Subscription Operations
+AzureActivity
+| where TimeGenerated > ago(1d)
+| project TimeGenerated, ResourceGroup, ResourceProvider, OperationName, Caller, ActivityStatus
+| order by TimeGenerated desc
+
+🔹 Key Vault – Access Audit
+AzureDiagnostics
+| where ResourceType == "VAULTS"
+| where Category == "AuditEvent"
+| project TimeGenerated, OperationName, ResultDescription, Identity
+| order by TimeGenerated desc
+
+🔹 VM CPU Utilization
+InsightsMetrics
+| where Namespace == "Processor"
+| where Name == "UtilizationPercentage"
+| summarize avg(CounterValue) by bin(TimeGenerated, 5m), Computer
+| order by TimeGenerated desc
+
+
+How to run queries:
+
+Go to Log Analytics Workspace → Logs in Azure Portal.
+
+Select your workspace (law-secureenv).
+
+Copy/paste a query.
+
+Adjust time range if needed (ago(1h), ago(24h), etc.).
+
+👉 Queries can be saved as Query Packs, transformed into custom alerts, or pinned into dashboards for visualization.
+
+7. Security Measures
+
+Network segmentation: strict separation between public/private.
+
+Default-deny NSGs: only explicit flows allowed.
+
+Just-in-time admin access: bastion limited to your /32.
+
+Managed Identity: no secrets in code, access via RBAC.
+
+Key Vault hardening: soft delete + purge protection.
+
+Centralized monitoring: every critical component feeds into Log Analytics.
+
+8. Operations & Cost Control
+
+Update admin IP:
+
 my_ip_cidr = "<NEW.IP>/32"
 terraform apply -auto-approve
-```
 
-### Lock down Key Vault after bootstrap
 
-Set in `modules/keyvault/main.tf`:
+Lock down Key Vault after bootstrap:
 
-```hcl
-network_acls { ip_rules = [] }  # remove your /32
-```
+network_acls { ip_rules = [] }
 
-Then:
 
-```bash
-terraform apply -auto-approve
-```
+Destroy resources when done:
 
-### Cost control
-
-* Use `Standard_B1s` VMs; stop/destroy when done:
-
-```bash
 terraform destroy -auto-approve
-```
 
-## 10. Troubleshooting
+9. Deliverable Checklist
 
-**SSH to bastion times out**
+[✔] Modular code (network, compute, keyvault, monitoring)
 
-* IP changed? Update `my_ip_cidr` and `terraform apply`.
-* Check NSG rules and association to public subnet.
+[✔] README with security explanations
 
-**Jump SSH fails with permission denied**
+[✔] Infrastructure tested and validated
 
-* Use distinct keys for bastion and private VM (see one‑liner above).
+[✔] KQL queries for log analysis
 
-**`az login --identity` fails on your laptop**
+[✔] Screenshots: Azure resources, SSH jump, Key Vault access, Log Analytics results
 
-* Must be executed **on an Azure VM** with Managed Identity.
+[✔] Cleanup plan included
 
-**Key Vault 403 during `terraform apply`**
-
-* Ensure `enable_rbac_authorization = true` and role assignment for your principal: `Key Vault Secrets Officer`.
-* Temporarily allow your /32 via `admin_ip_cidr` in KV `network_acls`.
-
-**`SecretNotFound` on Private VM**
-
-* Create the secret via Terraform or `az keyvault secret set` from your machine, then retry on the VM.
-
-## 11. Deliverable Checklist
-
-* [ok ] Code modular (network/compute/compute\_private/keyvault)
-* [ok ] README present (this file)
-* [ok ] Security measures explained (section 8)
-* [ok ] Screenshots: Azure RG, NSGs, VMs, KV Networking, SSH jump session, `az login --identity` + secret read
-* [ok ] Cleanup / cost control plan
-
----
-
-### Appendix: Example Outputs
-
-```bash
+Example Outputs
 bastion_admin_username = "azureuser"
 bastion_private_key_path = "./.ssh/bastion_id_rsa"
 bastion_public_ip = "4.180.237.185"
 private_vm_admin_username = "azureuser"
 private_vm_ip = "10.0.2.4"
 private_vm_key_path = "./.ssh/private_vm_id_rsa"
-keyvault_name = "kv-secureenv-zufui8"
-keyvault_uri = "https://kv-secureenv-zufui8.vault.azure.net/"
-```
+keyvault_name = "kv-secureenv-xxxxxx"
+keyvault_uri = "https://kv-secureenv-xxxxxx.vault.azure.net/"
