@@ -83,5 +83,6 @@ module "monitoring" {
     module.compute_private.private_nsg_id,
   ]
 
- alert_email = "tommyprobx@hotmail.com"
+  # Optionnel
+  alert_email = "tommyprobx@hotmail.com"
 }
