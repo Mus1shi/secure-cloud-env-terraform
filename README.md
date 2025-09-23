@@ -211,11 +211,11 @@ terraform destroy -auto-approve
 
 ## 11. Deliverable Checklist
 
-* [ ] Code modular (network/compute/compute\_private/keyvault)
-* [ ] README present (this file)
-* [ ] Security measures explained (section 8)
-* [ ] Screenshots: Azure RG, NSGs, VMs, KV Networking, SSH jump session, `az login --identity` + secret read
-* [ ] Cleanup / cost control plan
+* [ok ] Code modular (network/compute/compute\_private/keyvault)
+* [ok ] README present (this file)
+* [ok ] Security measures explained (section 8)
+* [ok ] Screenshots: Azure RG, NSGs, VMs, KV Networking, SSH jump session, `az login --identity` + secret read
+* [ok ] Cleanup / cost control plan
 
 ---
 
