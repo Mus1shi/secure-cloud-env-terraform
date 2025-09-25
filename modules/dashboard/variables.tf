@@ -43,7 +43,7 @@ variable "vm_private_id" {
 variable "time_window_ms" {
   description = "Fenêtre de temps pour les métriques en millisecondes"
   type        = number
-  default     = 3600000  # 1 heure
+  default     = 3600000 # 1 heure
 }
 
 variable "enable_metrics" {

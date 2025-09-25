@@ -1,3 +1,6 @@
+##############################
+# modules/monitoring/main.tf #
+##############################
 
 # -----------------------------
 # Log Analytics Workspace (LAW)
@@ -13,7 +16,6 @@ resource "azurerm_log_analytics_workspace" "law" {
 # ------------------------------------
 # Data Collection Rule (AMA) - minimal
 #  - Syslog Linux -> LAW
-#  (On ajoutera les perf Linux plus tard si nécessaire)
 # ------------------------------------
 resource "azurerm_monitor_data_collection_rule" "dcr" {
   name                = "dcr-secureenv"
@@ -43,10 +45,10 @@ resource "azurerm_monitor_data_collection_rule" "dcr" {
 }
 
 # ------------------------------------
-# AMA sur toutes les VMs + association
+# AMA sur chaque VM (via vm_map)
 # ------------------------------------
 resource "azurerm_virtual_machine_extension" "ama" {
-  for_each                  = toset(var.vm_ids)
+  for_each                  = var.vm_map # <-- map stable
   name                      = "AzureMonitorLinuxAgent"
   virtual_machine_id        = each.value
   publisher                 = "Microsoft.Azure.Monitor"
@@ -56,8 +58,8 @@ resource "azurerm_virtual_machine_extension" "ama" {
 }
 
 resource "azurerm_monitor_data_collection_rule_association" "dcr_assoc" {
-  for_each                = toset(var.vm_ids)
-  name                    = "assoc-dcr-secureenv"
+  for_each                = var.vm_map # <-- map stable
+  name                    = "assoc-dcr-${each.key}"
   target_resource_id      = each.value
   data_collection_rule_id = azurerm_monitor_data_collection_rule.dcr.id
 }
@@ -72,15 +74,12 @@ resource "azurerm_monitor_diagnostic_setting" "kv_diag" {
 
   enabled_log { category = "AuditEvent" }
 
-  enabled_metric {
-  category = "AllMetrics"
-}
-
+  # Provider v4: utiliser enabled_metric (metric est déprécié)
+  enabled_metric { category = "AllMetrics" }
 }
 
 # --------------------------------------------------
 # Activity Log (Subscription) -> LAW (catégories clés)
-# (si droits insuffisants au scope subscription, commente ce bloc)
 # --------------------------------------------------
 data "azurerm_subscription" "current" {}
 
@@ -124,10 +123,10 @@ resource "azurerm_storage_account" "flowlogs_sa" {
 }
 
 # -------------------------------------------------------
-# NSG Flow Logs v2 + Traffic Analytics (sur chaque NSG)
+# NSG Flow Logs v2 + Traffic Analytics (optionnel)
 # -------------------------------------------------------
 resource "azurerm_network_watcher_flow_log" "flowlog" {
-  for_each             = var.enable_nsg_flow_logs ? toset(var.nsg_ids) : [] # ← désactivé par défaut
+  for_each             = var.enable_nsg_flow_logs ? { for id in var.nsg_ids : id => id } : {} # map stable
   name                 = "flowlog-${substr(each.value, length(each.value) - 6, 6)}"
   resource_group_name  = data.azurerm_network_watcher.nw.resource_group_name
   network_watcher_name = data.azurerm_network_watcher.nw.name
@@ -155,8 +154,8 @@ resource "azurerm_network_watcher_flow_log" "flowlog" {
 # Action Group (option) + Alerte CPU (1 par VM)
 # ---------------------------------------------
 locals {
-  has_email = var.alert_email != null && var.alert_email != ""
-  vm_map    = { for idx, id in var.vm_ids : tostring(idx) => id }
+  has_email = var.alert_email != null && length(var.alert_email) > 0
+  vm_map    = var.vm_map
 }
 
 resource "azurerm_monitor_action_group" "ag" {
@@ -173,10 +172,10 @@ resource "azurerm_monitor_action_group" "ag" {
 }
 
 resource "azurerm_monitor_metric_alert" "cpu_high" {
-  for_each            = local.has_email ? local.vm_map : {}
+  for_each            = local.has_email ? var.vm_map : {}
   name                = "cpu-high-${each.key}"
   resource_group_name = var.resource_group_name
-  scopes              = [each.value] # ← 1 VM par alerte
+  scopes              = [each.value]
   description         = "CPU > 80% for 5 minutes"
   severity            = 3
   frequency           = "PT1M"

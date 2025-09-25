@@ -1,36 +1,41 @@
+# modules/monitoring/variables.tf
+
 variable "resource_group_name" {
-  type = string
+  description = "Nom du Resource Group"
+  type        = string
 }
 
 variable "location" {
-  type = string
+  description = "Région Azure"
+  type        = string
 }
 
-# IDs ARM des VMs (bastion + privée)
-variable "vm_ids" {
-  type = list(string)
-}
-
-# ID ARM complet du Key Vault
 variable "key_vault_id" {
-  type = string
+  description = "ID ARM du Key Vault"
+  type        = string
 }
 
-# IDs ARM des NSG (utilisés uniquement si enable_nsg_flow_logs = true)
 variable "nsg_ids" {
-  type    = list(string)
-  default = []
+  description = "Liste d'IDs ARM des NSG (pour Flow Logs si activé)"
+  type        = list(string)
+  default     = []
 }
 
-# Email pour recevoir les alertes (facultatif)
 variable "alert_email" {
-  type    = string
-  default = null
+  description = "Email destinataire des alertes (optionnel)"
+  type        = string
+  default     = ""
 }
 
-# ⚠️ NSG Flow Logs sont bloqués par Microsoft (création interdite depuis 30/06/2025)
-# On laisse à false par défaut pour éviter l'erreur.
+# On utilise UNIQUEMENT vm_map (et plus vm_ids)
+variable "vm_map" {
+  description = "Map stable des VMs: { name = resource_id }"
+  type        = map(string)
+}
+
+# Désactivé par défaut (beaucoup d'environnements le bloquent)
 variable "enable_nsg_flow_logs" {
-  type    = bool
-  default = false
+  description = "Activer NSG Flow Logs (peut être bloqué selon l'env)"
+  type        = bool
+  default     = false
 }

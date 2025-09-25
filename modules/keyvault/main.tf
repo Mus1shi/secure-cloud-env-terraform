@@ -28,8 +28,8 @@ resource "azurerm_key_vault" "kv" {
   network_acls {
     default_action             = "Deny"
     bypass                     = "AzureServices"
-    virtual_network_subnet_ids = [var.private_subnet_id]   # ton subnet privé
-    ip_rules                   = [var.admin_ip_cidr]       # ton IP publique /32
+    virtual_network_subnet_ids = [var.private_subnet_id] # ton subnet privé
+    ip_rules                   = [var.admin_ip_cidr]     # ton IP publique /32
   }
 
   public_network_access_enabled = true
