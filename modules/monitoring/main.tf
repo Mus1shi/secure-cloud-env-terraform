@@ -1,21 +1,3 @@
-terraform {
-  required_version = ">= 1.5.0"
-
-  required_providers {
-    azurerm = {
-      source  = "hashicorp/azurerm"
-      version = ">= 3.100.0"
-    }
-    random = {
-      source  = "hashicorp/random"
-      version = ">= 3.6.0"
-    }
-  }
-}
-
-provider "azurerm" {
-  features {}
-}
 
 # -----------------------------
 # Log Analytics Workspace (LAW)
@@ -90,10 +72,10 @@ resource "azurerm_monitor_diagnostic_setting" "kv_diag" {
 
   enabled_log { category = "AuditEvent" }
 
-  metric {
-    category = "AllMetrics"
-    enabled  = true
-  }
+  enabled_metric {
+  category = "AllMetrics"
+}
+
 }
 
 # --------------------------------------------------

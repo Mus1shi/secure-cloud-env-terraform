@@ -1,0 +1,50 @@
+{
+  "lenses": [
+    {
+      "order": 0,
+      "parts": [
+        {
+          "position": { "x": 0, "y": 0, "rowSpan": 2, "colSpan": 12 },
+          "metadata": {
+            "type": "Extension/HubsExtension/PartType/ClockPart",
+            "settings": {
+              "content": {
+                "timeFormat": "HH:mm:ss",
+                "timezoneId": "W. Europe Standard Time",
+                "version": 1
+              }
+            }
+          }
+        },
+        {
+          "position": { "x": 0, "y": 2, "rowSpan": 3, "colSpan": 12 },
+          "metadata": {
+            "type": "Extension/HubsExtension/PartType/LinkListPart",
+            "settings": {
+              "title": "🔗 Liens rapides",
+              "subtitle": "Navigation",
+              "links": [
+                {
+                  "text": "Activity Log",
+                  "href": "https://portal.azure.com/#view/Microsoft_Azure_ActivityLog/ActivityLogBlade",
+                  "target": "blade"
+                },
+                {
+                  "text": "Log Analytics",
+                  "href": "https://portal.azure.com/#view/Microsoft_OperationalInsights/SearchBlade",
+                  "target": "blade"
+                },
+                {
+                  "text": "Machines virtuelles",
+                  "href": "https://portal.azure.com/#blade/HubsExtension/BrowseResource/resourceType/Microsoft.Compute%2FvirtualMachines",
+                  "target": "blade"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "metadata": { "model": "portal-dashboard/v2" }
+}

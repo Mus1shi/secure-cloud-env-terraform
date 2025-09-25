@@ -1,7 +1,7 @@
 data "azurerm_client_config" "current" {}
 
 # ------------------------------------------------------
-# Role Assignment : toi (Terraform) = Secrets Officer
+# Role Assignment : Terraform = Secrets Officer
 # ------------------------------------------------------
 resource "azurerm_role_assignment" "kv_secrets_officer_tf" {
   scope                = azurerm_key_vault.kv.id
@@ -22,14 +22,14 @@ resource "azurerm_key_vault" "kv" {
   # Sécurité
   soft_delete_retention_days = 90
   purge_protection_enabled   = true
-  enable_rbac_authorization  = true
+  rbac_authorization_enabled = true
 
-  # Firewall : uniquement subnet privé + ton IP
+  # ⚠️ Autorisations réseau
   network_acls {
     default_action             = "Deny"
     bypass                     = "AzureServices"
-    virtual_network_subnet_ids = [var.private_subnet_id]
-    ip_rules                   = [var.admin_ip_cidr]
+    virtual_network_subnet_ids = [var.private_subnet_id]   # ton subnet privé
+    ip_rules                   = [var.admin_ip_cidr]       # ton IP publique /32
   }
 
   public_network_access_enabled = true
@@ -38,6 +38,7 @@ resource "azurerm_key_vault" "kv" {
 # ------------------------------------------------------
 # Secrets
 # ------------------------------------------------------
+
 # 1) Clé privée bastion
 resource "azurerm_key_vault_secret" "bastion_private_key" {
   count        = var.bastion_private_key_path != null && trimspace(var.bastion_private_key_path) != "" ? 1 : 0

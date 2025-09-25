@@ -11,7 +11,7 @@ output "admin_username" {
   value = var.admin_username
 }
 
+# ← ID de la VM bastion
 output "vm_id" {
   value = azurerm_linux_virtual_machine.bastion.id
 }
-

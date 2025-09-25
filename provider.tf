@@ -1,22 +1,20 @@
-# provider.tf (racine)
 terraform {
-  required_version = ">= 1.6.0"
   required_providers {
     azurerm = {
       source  = "hashicorp/azurerm"
-      version = "~> 3.116" # version récente et stable
+      version = ">= 3.100.0"
     }
-    tls = {
-      source  = "hashicorp/tls"
-      version = "~> 4.0"
+    random = {
+      source  = "hashicorp/random"
+      version = ">= 3.6.0"
     }
-    local = {
-      source  = "hashicorp/local"
-      version = "~> 2.4"
-    }
+  
   }
 }
 
 provider "azurerm" {
   features {}
+  use_cli = true # ← clé : dis au provider d’utiliser le contexte `az` (ton `az account show`)
 }
+
+

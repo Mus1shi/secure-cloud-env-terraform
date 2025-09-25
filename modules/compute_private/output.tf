@@ -11,6 +11,9 @@ output "private_key_path" {
   description = "Chemin local de la clé privée (si générée par Terraform)."
 }
 
+# Attention: cette sortie suppose que l'identité managée est activée sur la VM privée.
+# Si tu n'as pas de bloc "identity { type = \"SystemAssigned\" }" dans la VM,
+# commente cette sortie ou ajoute l'identity dans la ressource VM.
 output "vm_principal_id" {
   value       = azurerm_linux_virtual_machine.private.identity[0].principal_id
   description = "Object ID de l'identité managée de la VM privée"

@@ -86,3 +86,15 @@ module "monitoring" {
   # Optionnel
   alert_email = "tommyprobx@hotmail.com"
 }
+###essai de dashboard terraform pas d'affichage json.
+#module "dashboard" {
+# source = "./modules/dashboard"
+#providers = {
+# azapi = azapi # ← force l’utilisation de azure/azapi
+#}
+
+#dashboard_name      = "dash-secure-cloud-env"
+#resource_group_name = azurerm_resource_group.rg.name
+#location            = azurerm_resource_group.rg.location
+#}
+
