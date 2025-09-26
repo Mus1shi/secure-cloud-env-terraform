@@ -14,3 +14,10 @@ terraform.rc
 .DS_Store
 .vscode/
 .idea/
+.ssh/
+*.pem
+*.key
+tfplan
+*.backup
+*.tfstate*
+.terraform/
