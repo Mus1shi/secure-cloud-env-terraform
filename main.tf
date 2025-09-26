@@ -71,27 +71,15 @@ resource "random_string" "suffix" {
 
 # 6) Key Vault (prêt, mais désactivé par défaut)
 module "keyvault" {
-  count  = local.enable_keyvault ? 1 : 0
   source = "./modules/keyvault"
-
   resource_group_name = azurerm_resource_group.rg.name
-  location            = azurerm_resource_group.rg.location
-  kv_name             = "kv-secureenv-${random_string.suffix.result}"
+  location = azurerm_resource_group.rg.location
 
-  # Sécurité réseau
-  admin_ip_cidr     = var.my_ip_cidr
-  private_subnet_id = module.network.private_subnet_id
-
-  # RBAC / identités (si tu veux donner accès à la VM privée)
-  private_vm_principal_id           = module.compute_private.vm_principal_id
-  assign_secrets_user_to_private_vm = false
-
-  # Access policies (garde false si ton tenant impose RBAC)
-  enable_access_policies = false
-
-  # Secrets (ex : clé privée du bastion)
-  bastion_private_key_path = module.compute.private_key_path
-  create_secrets           = false
+  kv_name = "kv-secureenv-${random_string.suffix.result}"
+  private_vm_principal_id = try(module.compute_private.vm_principal_id, "")
+  bastion_private_key_path = try(module.compute.private_key_path, "")
+  admin_ip_cidr = var.my_ip_cidr
+  enabled = false # <- keep false for now
 }
 
 # 7) Monitoring (LAW, DCR, AMA, Activity Log, options)
