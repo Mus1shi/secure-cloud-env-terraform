@@ -1,3 +1,7 @@
+################
+# ROOT OUTPUTS #
+################
+
 # Bastion
 output "bastion_public_ip" {
   value = module.compute.public_ip
@@ -24,9 +28,11 @@ output "private_vm_key_path" {
   value = module.compute_private.private_key_path
 }
 
+# Key Vault (peut être désactivé)
 output "keyvault_name" {
-  value = module.keyvault.keyvault_name
+  value = try(module.keyvault[0].keyvault_name, "(disabled)")
 }
+
 output "keyvault_uri" {
-  value = module.keyvault.keyvault_uri
+  value = try(module.keyvault[0].keyvault_uri, "(disabled)")
 }

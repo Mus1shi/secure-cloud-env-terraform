@@ -2,6 +2,26 @@
 # modules/monitoring/main.tf #
 ##############################
 
+terraform {
+  required_providers {
+    azurerm = {
+      source  = "hashicorp/azurerm"
+      version = ">= 3.100.0"
+    }
+    random = {
+      source  = "hashicorp/random"
+      version = ">= 3.6.0"
+    }
+  }
+}
+
+# PAS de provider "azurerm" ici
+
+locals {
+  effective_vm_map = length(var.vm_map) > 0 ? var.vm_map : { for id in var.vm_ids : id => id }
+  has_email        = var.alert_email != null && length(var.alert_email) > 0
+}
+
 # -----------------------------
 # Log Analytics Workspace (LAW)
 # -----------------------------
@@ -14,8 +34,7 @@ resource "azurerm_log_analytics_workspace" "law" {
 }
 
 # ------------------------------------
-# Data Collection Rule (AMA) - minimal
-#  - Syslog Linux -> LAW
+# Data Collection Rule (AMA) - minimal (legacy)
 # ------------------------------------
 resource "azurerm_monitor_data_collection_rule" "dcr" {
   name                = "dcr-secureenv"
@@ -45,41 +64,50 @@ resource "azurerm_monitor_data_collection_rule" "dcr" {
 }
 
 # ------------------------------------
-# AMA sur chaque VM (via vm_map)
+# AMA + Association DCR sur chaque VM
 # ------------------------------------
 resource "azurerm_virtual_machine_extension" "ama" {
-  for_each                  = var.vm_map # <-- map stable
+  for_each                  = local.effective_vm_map
   name                      = "AzureMonitorLinuxAgent"
   virtual_machine_id        = each.value
   publisher                 = "Microsoft.Azure.Monitor"
   type                      = "AzureMonitorLinuxAgent"
   type_handler_version      = "1.30"
   automatic_upgrade_enabled = true
+
+  lifecycle {
+    ignore_changes = [type_handler_version]
+  }
 }
 
+# ⚠️ FIX: nom constant sans caractères spéciaux (évite d'utiliser each.key)
 resource "azurerm_monitor_data_collection_rule_association" "dcr_assoc" {
-  for_each                = var.vm_map # <-- map stable
-  name                    = "assoc-dcr-${each.key}"
+  for_each                = local.effective_vm_map
+  name                    = "assoc-dcr"
   target_resource_id      = each.value
   data_collection_rule_id = azurerm_monitor_data_collection_rule.dcr.id
 }
 
 # --------------------------------------
-# Diagnostic Settings - Key Vault -> LAW
+# Diagnostic Settings - Key Vault -> LAW (option)
 # --------------------------------------
 resource "azurerm_monitor_diagnostic_setting" "kv_diag" {
+  count                      = var.key_vault_id == null ? 0 : 1
   name                       = "diag-kv"
   target_resource_id         = var.key_vault_id
   log_analytics_workspace_id = azurerm_log_analytics_workspace.law.id
 
-  enabled_log { category = "AuditEvent" }
+  enabled_log {
+    category = "AuditEvent"
+  }
 
-  # Provider v4: utiliser enabled_metric (metric est déprécié)
-  enabled_metric { category = "AllMetrics" }
+  enabled_metric {
+    category = "AllMetrics"
+  }
 }
 
 # --------------------------------------------------
-# Activity Log (Subscription) -> LAW (catégories clés)
+# Activity Log (Subscription) -> LAW
 # --------------------------------------------------
 data "azurerm_subscription" "current" {}
 
@@ -99,7 +127,7 @@ resource "azurerm_monitor_diagnostic_setting" "sub_activity" {
 }
 
 # -------------------------------------------------------
-# Network Watcher existant (1 par région) + Storage Account
+# Network Watcher (existant) + Storage Account (Flow Logs)
 # -------------------------------------------------------
 data "azurerm_network_watcher" "nw" {
   name                = "NetworkWatcher_westeurope"
@@ -122,11 +150,8 @@ resource "azurerm_storage_account" "flowlogs_sa" {
   min_tls_version          = "TLS1_2"
 }
 
-# -------------------------------------------------------
-# NSG Flow Logs v2 + Traffic Analytics (optionnel)
-# -------------------------------------------------------
 resource "azurerm_network_watcher_flow_log" "flowlog" {
-  for_each             = var.enable_nsg_flow_logs ? { for id in var.nsg_ids : id => id } : {} # map stable
+  for_each             = var.enable_nsg_flow_logs ? { for id in var.nsg_ids : id => id } : {}
   name                 = "flowlog-${substr(each.value, length(each.value) - 6, 6)}"
   resource_group_name  = data.azurerm_network_watcher.nw.resource_group_name
   network_watcher_name = data.azurerm_network_watcher.nw.name
@@ -153,11 +178,6 @@ resource "azurerm_network_watcher_flow_log" "flowlog" {
 # ---------------------------------------------
 # Action Group (option) + Alerte CPU (1 par VM)
 # ---------------------------------------------
-locals {
-  has_email = var.alert_email != null && length(var.alert_email) > 0
-  vm_map    = var.vm_map
-}
-
 resource "azurerm_monitor_action_group" "ag" {
   count               = local.has_email ? 1 : 0
   name                = "ag-secureenv"
@@ -172,7 +192,7 @@ resource "azurerm_monitor_action_group" "ag" {
 }
 
 resource "azurerm_monitor_metric_alert" "cpu_high" {
-  for_each            = local.has_email ? var.vm_map : {}
+  for_each            = local.has_email ? local.effective_vm_map : {}
   name                = "cpu-high-${each.key}"
   resource_group_name = var.resource_group_name
   scopes              = [each.value]

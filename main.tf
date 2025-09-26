@@ -2,6 +2,16 @@
 # ROOT MAIN.TF – SECURE CLOUD ENV  #
 #####################################
 
+locals {
+  # Toggle simple : active/désactive le module Key Vault
+  enable_keyvault = false
+}
+
+# Si le module keyvault est désactivé, kv_id = null
+locals {
+  kv_id = local.enable_keyvault ? try(module.keyvault[0].keyvault_id, null) : null
+}
+
 # 1) Resource Group
 resource "azurerm_resource_group" "rg" {
   name     = "rg-terraform-secure"
@@ -20,13 +30,14 @@ module "network" {
   public_subnet_cidr  = "10.0.1.0/24"
   private_subnet_cidr = "10.0.2.0/24"
 
-  # Doit exister dans variables.tf à la racine (ex: "X.X.X.X/32")
+  # Doit exister dans variables.tf à la racine
   my_ip_cidr = var.my_ip_cidr
 }
 
 # 3) VM Bastion (publique)
 module "compute" {
-  source              = "./modules/compute"
+  source = "./modules/compute"
+
   resource_group_name = azurerm_resource_group.rg.name
   location            = azurerm_resource_group.rg.location
 
@@ -38,19 +49,19 @@ module "compute" {
 
 # 4) VM privée (dans subnet privé)
 module "compute_private" {
-  source              = "./modules/compute_private"
+  source = "./modules/compute_private"
+
   resource_group_name = azurerm_resource_group.rg.name
   location            = azurerm_resource_group.rg.location
 
   vm_name            = "vm-private"
   subnet_id          = module.network.private_subnet_id
-  public_subnet_cidr = "10.0.1.0/24" # subnet public
-
-  admin_username = "azureuser"
-  vm_size        = "Standard_B1s"
+  public_subnet_cidr = "10.0.1.0/24"
+  admin_username     = "azureuser"
+  vm_size            = "Standard_B1s"
 }
 
-# 5) Suffixe aléatoire (noms globaux uniques)
+# 5) Suffixe aléatoire (pour Key Vault s’il est activé)
 resource "random_string" "suffix" {
   length  = 6
   upper   = false
@@ -58,55 +69,51 @@ resource "random_string" "suffix" {
   special = false
 }
 
-# 6) Key Vault (+ secrets)
+# 6) Key Vault (prêt, mais désactivé par défaut)
 module "keyvault" {
-  source              = "./modules/keyvault"
+  count  = local.enable_keyvault ? 1 : 0
+  source = "./modules/keyvault"
+
   resource_group_name = azurerm_resource_group.rg.name
   location            = azurerm_resource_group.rg.location
+  kv_name             = "kv-secureenv-${random_string.suffix.result}"
 
-  kv_name                 = "kv-secureenv-${random_string.suffix.result}"
-  private_subnet_id       = module.network.private_subnet_id
-  private_vm_principal_id = module.compute_private.vm_principal_id
+  # Sécurité réseau
+  admin_ip_cidr     = var.my_ip_cidr
+  private_subnet_id = module.network.private_subnet_id
 
-  # on pousse la clé privée bastion si générée par Terraform
+  # RBAC / identités (si tu veux donner accès à la VM privée)
+  private_vm_principal_id           = module.compute_private.vm_principal_id
+  assign_secrets_user_to_private_vm = false
+
+  # Access policies (garde false si ton tenant impose RBAC)
+  enable_access_policies = false
+
+  # Secrets (ex : clé privée du bastion)
   bastion_private_key_path = module.compute.private_key_path
-  admin_ip_cidr            = var.my_ip_cidr
+  create_secrets           = false
 }
 
-# 7) Monitoring (LAW, DCR, AMA, Activity Log, alertes)
+# 7) Monitoring (LAW, DCR, AMA, Activity Log, options)
 module "monitoring" {
   source              = "./modules/monitoring"
   resource_group_name = azurerm_resource_group.rg.name
   location            = azurerm_resource_group.rg.location
 
-  # Map stable {nom logique => id ARM} (évite l’erreur for_each)
-  vm_map = {
-    bastion = module.compute.vm_id
-    private = module.compute_private.vm_id
-  }
-
-  key_vault_id = module.keyvault.keyvault_id
-
-  nsg_ids = [
-    module.network.public_nsg_id,
-    module.compute_private.private_nsg_id,
+  # Compat : on passe vm_ids (le module supporte vm_ids OU vm_map)
+  vm_ids = [
+    module.compute.vm_id,
+    module.compute_private.vm_id
   ]
 
-  # Optionnel (déclenche la création d’un Action Group + Alerts)
-  alert_email = "tommyprobx@hotmail.com"
+  # Key Vault (null si module désactivé)
+  key_vault_id = local.kv_id
 
-  # Laisse à false (Microsoft a gelé la création de NSG Flow Logs côté API)
+  # NSG à activer en Flow Logs (on passe ceux du module network)
+  nsg_ids              = [module.network.public_nsg_id, module.network.private_nsg_id]
   enable_nsg_flow_logs = false
-}
 
-#####################################
-# (Optionnel) Dashboard via azapi   #
-# Gardé en commentaire pour plus tard
-#####################################
-# module "dashboard" {
-#   source              = "./modules/dashboard"
-#   dashboard_name      = "dash-secure-cloud-env"
-#   resource_group_name = azurerm_resource_group.rg.name
-#   location            = azurerm_resource_group.rg.location
-# }
+  # Alertes e-mail (mets ton mail ou laisse null pour désactiver)
+  alert_email = null
+}
 

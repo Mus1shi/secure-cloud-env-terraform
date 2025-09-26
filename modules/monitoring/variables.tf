@@ -1,41 +1,40 @@
-# modules/monitoring/variables.tf
+variable "resource_group_name" { type = string }
+variable "location"            { type = string }
 
-variable "resource_group_name" {
-  description = "Nom du Resource Group"
-  type        = string
-}
-
-variable "location" {
-  description = "Région Azure"
-  type        = string
-}
-
+# Optionnel : null si Key Vault désactivé
 variable "key_vault_id" {
-  description = "ID ARM du Key Vault"
-  type        = string
+  type    = string
+  default = null
 }
 
-variable "nsg_ids" {
-  description = "Liste d'IDs ARM des NSG (pour Flow Logs si activé)"
+# ---- VMs ----
+# Ancienne interface (liste d'IDs) — FACULTATIVE
+variable "vm_ids" {
+  description = "Liste d'IDs ARM des VMs (option si vm_map fourni)"
   type        = list(string)
   default     = []
 }
 
-variable "alert_email" {
-  description = "Email destinataire des alertes (optionnel)"
-  type        = string
-  default     = ""
-}
-
-# On utilise UNIQUEMENT vm_map (et plus vm_ids)
+# Nouvelle interface (map stable id->id) — FACULTATIVE
 variable "vm_map" {
-  description = "Map stable des VMs: { name = resource_id }"
+  description = "Map stable des VMs: { id = id } (option si vm_ids fourni)"
   type        = map(string)
+  default     = {}
 }
 
-# Désactivé par défaut (beaucoup d'environnements le bloquent)
+# ---- Flow Logs (option) ----
 variable "enable_nsg_flow_logs" {
-  description = "Activer NSG Flow Logs (peut être bloqué selon l'env)"
-  type        = bool
-  default     = false
+  type    = bool
+  default = false
+}
+
+variable "nsg_ids" {
+  type    = list(string)
+  default = []
+}
+
+# ---- Alerting (option) ----
+variable "alert_email" {
+  type    = string
+  default = null
 }
