@@ -1,4 +1,8 @@
-# Secure Cloud Environment on Azure with Terraform
+# 🚀 Secure Cloud Environment on Azure (Terraform)
+
+[![Terraform](https://img.shields.io/badge/IaC-Terraform-844fba?logo=terraform)]()
+[![Azure](https://img.shields.io/badge/Cloud-Azure-0078D4?logo=microsoft-azure)]()
+[![Security](https://img.shields.io/badge/Focus-Security-blue)]()
 
 ## 🔹 Quick Description
 This project provisions a **structured, secure, and monitored Azure environment** using Terraform.  
@@ -60,6 +64,17 @@ Copier le code
 - Terraform ≥ 1.6
 - Permissions: create RG, VNet, NSG, VM, Key Vault, RBAC roles
 - Your **public IP address** (`my_ip_cidr`)
+
+---
+## 📸 Screenshots
+
+| Resource Group | VNet/Subnets | Dashboard |
+|----------------|--------------|-----------|
+| ![](./screenshots/rg-overview.png) | ![](./screenshots/vnet-subnets.png) | ![](./screenshots/dashboard.png) |
+
+| Bastion SSH | Private VM | Log Analytics |
+|-------------|------------|---------------|
+| ![](./screenshots/bastion-ssh.png) | ![](./screenshots/private-vm.png) | ![](./screenshots/log-analytics.png) |
 
 ---
 
