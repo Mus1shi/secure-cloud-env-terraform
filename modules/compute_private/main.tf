@@ -1,26 +1,36 @@
+# Compute_private module - deploy a backend VM without public ip.
+# This VM can only be reached from bastion (via SSH).
+# Some commments has little typos, but code is ok.
+
 locals {
   use_inline_key = var.ssh_public_key != null && trim(var.ssh_public_key) != ""
+  # True if a ssh key was passed, false = we generate one.
 }
 
+# Generate ssh key if none provided
 resource "tls_private_key" "private" {
   count     = local.use_inline_key ? 0 : 1
   algorithm = "RSA"
   rsa_bits  = 4096
 }
 
+# Save private key to local file (temporary solution)
 resource "local_file" "private_key_pem" {
   count           = local.use_inline_key ? 0 : 1
   filename        = "${path.root}/.ssh/private_vm_id_rsa"
   content         = tls_private_key.private[0].private_key_pem
   file_permission = "0600"
+  # chmod 600 = only owner can read/write
 }
 
+# NSG for the private subnet
 resource "azurerm_network_security_group" "private" {
   name                = "${var.vm_name}-nsg"
   location            = var.location
   resource_group_name = var.resource_group_name
 }
 
+# Allow SSH only from the public subnet (where bastion is)
 resource "azurerm_network_security_rule" "allow_ssh_from_public_subnet" {
   name                        = "allow-ssh-from-public-subnet"
   priority                    = 100
@@ -33,8 +43,10 @@ resource "azurerm_network_security_rule" "allow_ssh_from_public_subnet" {
   destination_address_prefix  = "*"
   resource_group_name         = var.resource_group_name
   network_security_group_name = azurerm_network_security_group.private.name
+  # This ensure bastion can ssh to private vm.
 }
 
+# Deny any other traffic comming from VNet
 resource "azurerm_network_security_rule" "deny_vnet_inbound" {
   name                        = "deny-vnet-inbound"
   priority                    = 200
@@ -47,8 +59,10 @@ resource "azurerm_network_security_rule" "deny_vnet_inbound" {
   destination_address_prefix  = "*"
   resource_group_name         = var.resource_group_name
   network_security_group_name = azurerm_network_security_group.private.name
+  # Blocks lateral moves from other subnets inside same vnet.
 }
 
+# Deny all other inbound trafic
 resource "azurerm_network_security_rule" "deny_all_inbound" {
   name                        = "deny-all-inbound"
   priority                    = 300
@@ -63,11 +77,13 @@ resource "azurerm_network_security_rule" "deny_all_inbound" {
   network_security_group_name = azurerm_network_security_group.private.name
 }
 
+# Attach NSG to the private subnet
 resource "azurerm_subnet_network_security_group_association" "private_assoc" {
   subnet_id                 = var.subnet_id
   network_security_group_id = azurerm_network_security_group.private.id
 }
 
+# NIC without public ip
 resource "azurerm_network_interface" "private" {
   name                = "${var.vm_name}-nic"
   location            = var.location
@@ -80,6 +96,7 @@ resource "azurerm_network_interface" "private" {
   }
 }
 
+# Private VM (Ubuntu)
 resource "azurerm_linux_virtual_machine" "private" {
   name                = var.vm_name
   location            = var.location
@@ -89,7 +106,9 @@ resource "azurerm_linux_virtual_machine" "private" {
 
   identity {
     type = "SystemAssigned"
+    # System assigned identity (MSI) for future KeyVault access etc.
   }
+
   network_interface_ids = [
     azurerm_network_interface.private.id
   ]
@@ -103,6 +122,7 @@ resource "azurerm_linux_virtual_machine" "private" {
     name                 = "${var.vm_name}-osdisk"
     caching              = "ReadWrite"
     storage_account_type = "Standard_LRS"
+    # Basic standard disk is enouf for demo.
   }
 
   source_image_reference {
@@ -113,4 +133,5 @@ resource "azurerm_linux_virtual_machine" "private" {
   }
 
   disable_password_authentication = true
+  # Enforces ssh keys only.
 }

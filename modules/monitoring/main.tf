@@ -15,11 +15,13 @@ terraform {
   }
 }
 
-# PAS de provider "azurerm" ici
+# No explicit azurerm provider block here (we inherit from root)
+# Keep modules provider-agnostic, so thay stay reusable.
 
 locals {
   effective_vm_map = length(var.vm_map) > 0 ? var.vm_map : { for id in var.vm_ids : id => id }
   has_email        = var.alert_email != null && length(var.alert_email) > 0
+  # vm_map allows named keys (better alert names); fallback to ids map if empty.
 }
 
 # -----------------------------
@@ -31,6 +33,7 @@ resource "azurerm_log_analytics_workspace" "law" {
   resource_group_name = var.resource_group_name
   sku                 = "PerGB2018"
   retention_in_days   = 30
+  # 30 days is fine for labs. For prod, choose retention based on compliance & costs.
 }
 
 # ------------------------------------
@@ -54,12 +57,14 @@ resource "azurerm_monitor_data_collection_rule" "dcr" {
       streams        = ["Microsoft-Syslog"]
       facility_names = ["auth", "authpriv", "daemon", "syslog", "user"]
       log_levels     = ["Debug", "Info", "Notice", "Warning", "Error", "Critical", "Alert", "Emergency"]
+      # Broad capture for demo; tighten for prod (noise vs visibility trade-off).
     }
   }
 
   data_flow {
     streams      = ["Microsoft-Syslog"]
     destinations = ["law"]
+    # Route syslog to LAW. Could add perf, innsights, etc. later on.
   }
 }
 
@@ -78,6 +83,7 @@ resource "azurerm_virtual_machine_extension" "ama" {
   lifecycle {
     ignore_changes = [type_handler_version]
   }
+  # Install AMA on all targeted VMs, let it auto-upgrade (safer, less drift).
 }
 
 # ⚠️ FIX: nom constant sans caractères spéciaux (évite d'utiliser each.key)
@@ -86,6 +92,7 @@ resource "azurerm_monitor_data_collection_rule_association" "dcr_assoc" {
   name                    = "assoc-dcr"
   target_resource_id      = each.value
   data_collection_rule_id = azurerm_monitor_data_collection_rule.dcr.id
+  # Associate every VM to the DCR. Constant name avoids invalid chars issues.
 }
 
 # --------------------------------------
@@ -104,6 +111,7 @@ resource "azurerm_monitor_diagnostic_setting" "kv_diag" {
   enabled_metric {
     category = "AllMetrics"
   }
+  # Only enabled if key_vault_id is provided. Good to plug KV audit to LAW.
 }
 
 # --------------------------------------------------
@@ -124,6 +132,7 @@ resource "azurerm_monitor_diagnostic_setting" "sub_activity" {
   enabled_log { category = "Policy" }
   enabled_log { category = "Autoscale" }
   enabled_log { category = "ResourceHealth" }
+  # Subscription-level Activity Logs piped to LAW. Solid visibility baseline.
 }
 
 # -------------------------------------------------------
@@ -132,6 +141,7 @@ resource "azurerm_monitor_diagnostic_setting" "sub_activity" {
 data "azurerm_network_watcher" "nw" {
   name                = "NetworkWatcher_westeurope"
   resource_group_name = "NetworkWatcherRG"
+  # Assumes default NW resource exists in this region. In new subs, enable it first.
 }
 
 resource "random_string" "sa_suffix" {
@@ -139,6 +149,7 @@ resource "random_string" "sa_suffix" {
   upper   = false
   numeric = true
   special = false
+  # Suffix to make SA name globally unique (dns constraint).
 }
 
 resource "azurerm_storage_account" "flowlogs_sa" {
@@ -148,6 +159,7 @@ resource "azurerm_storage_account" "flowlogs_sa" {
   account_tier             = "Standard"
   account_replication_type = "LRS"
   min_tls_version          = "TLS1_2"
+  # LRS is cost-effective for logs. For higher durabilty, use GRS/RA-GRS (more €€).
 }
 
 resource "azurerm_network_watcher_flow_log" "flowlog" {
@@ -173,6 +185,7 @@ resource "azurerm_network_watcher_flow_log" "flowlog" {
     workspace_resource_id = azurerm_log_analytics_workspace.law.id
     interval_in_minutes   = 10
   }
+  # Flow Logs v2 with Traffic Analytics into LAW. 7d retention keeps costs under control.
 }
 
 # ---------------------------------------------
@@ -189,6 +202,7 @@ resource "azurerm_monitor_action_group" "ag" {
     email_address           = var.alert_email
     use_common_alert_schema = true
   }
+  # Create only if email provided. Add sms/webhook recevers if needed.
 }
 
 resource "azurerm_monitor_metric_alert" "cpu_high" {
@@ -212,4 +226,5 @@ resource "azurerm_monitor_metric_alert" "cpu_high" {
   action {
     action_group_id = azurerm_monitor_action_group.ag[0].id
   }
+  # One alert per VM (named by key). For prod add dimensions or dynamic thresholds.
 }

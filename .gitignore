@@ -1,23 +1,48 @@
+# Terraform working dir (providers, plugins, cache)
 .terraform/
+
+# Terragrunt cache files (if using terragrunt wrapper)
 .terragrunt-cache/
+
+# Terraform state files (store real infra state, never commit!)
 *.tfstate
 *.tfstate.*
+
+# Crash logs (created if terraform crashes)
 crash.log
+
+# Variable definitions (contain secrets → never commit)
 *.tfvars
 *.tfvars.json
+
+# Override files (local custom tf code, not for repo)
 override.tf
 override.tf.json
 *_override.tf
 *_override.tf.json
+
+# Terraform cli config (may contain creds)
 .terraformrc
 terraform.rc
+
+# OS or IDE junk files (macos, vscode, idea)
 .DS_Store
 .vscode/
 .idea/
+
+# SSH keys or local secrets (private material)
 .ssh/
 *.pem
 *.key
+
+# Terraform plan files (binary outputs of `terraform plan`)
 tfplan
+
+# Backup files created by terraform
 *.backup
+
+# Extra catch-all for tfstate backups
 *.tfstate*
+
+# (repeat) terraform cache dir
 .terraform/
