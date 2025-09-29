@@ -68,13 +68,37 @@ Copier le code
 ---
 ## 📸 Screenshots
 
-| Resource Group | VNet/Subnets | Dashboard |
-|----------------|--------------|-----------|
-| ![](./screenshots/rg-overview.png) | ![](./screenshots/vnet-subnets.png) | ![](./screenshots/dashboard.png) |
+| Resource Group |
 
-| Bastion SSH | Private VM | Log Analytics |
-|-------------|------------|---------------|
-| ![](./screenshots/bastion-ssh.png) | ![](./screenshots/private-vm.png) | ![](./screenshots/log-analytics.png) |
+<img width="1880" height="1471" alt="image" src="https://github.com/user-attachments/assets/ecde69f4-6fe7-42a7-8f8d-aa4e49968933" />
+
+<img width="1891" height="1522" alt="Capture d'écran 2025-09-29 082525" src="https://github.com/user-attachments/assets/d1202e3e-e58b-4a6e-a294-791ea4aa4375" />
+
+<img width="1889" height="1501" alt="Capture d'écran 2025-09-29 082618" src="https://github.com/user-attachments/assets/794f9ad9-c9da-4a7e-9a3b-4e32d4d15199" />
+
+
+| VNet/Subnets |
+<img width="1784" height="1198" alt="image" src="https://github.com/user-attachments/assets/8e8d9363-4f75-4e3d-ae42-5a8d3bc3474d" />
+
+<img width="1729" height="1144" alt="image" src="https://github.com/user-attachments/assets/f3a7119c-a758-44d3-88bf-3bf0e6394067" />
+
+Dashboard |
+
+<img width="3060" height="1595" alt="image" src="https://github.com/user-attachments/assets/9390de47-fde4-4e04-be82-250bd952a39f" />
+
+
+| Bastion SSH |
+
+<img width="1646" height="1238" alt="image" src="https://github.com/user-attachments/assets/7bc9686d-caee-486d-bbab-fc48efd2ffc4" />
+
+| Private VM |
+
+<img width="1159" height="1136" alt="image" src="https://github.com/user-attachments/assets/6abc8c48-1ec0-4797-bf60-f159959e46ea" />
+
+
+| Log Analytics |
+
+<img width="3006" height="1461" alt="image" src="https://github.com/user-attachments/assets/796688c4-10e0-4f53-ade8-78e8edfc16f8" />
 
 ---
 
