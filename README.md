@@ -27,9 +27,7 @@ Internet (your /32)
 │ Managed Identity + VNet service endpoint (KeyVault)
 ▼
 [Azure Key Vault] (RBAC enabled, network ACL: only private subnet)
-
-markdown
-Copier le code
+ 
 
 ### 🔐 Security controls
 - **Public NSG** → Allow TCP/22 from `my_ip_cidr`, deny everything else  
@@ -53,9 +51,6 @@ keyvault/
 monitoring/
 scripts/
 demo_kv_read.sh # demo script to test Key Vault access (optional)
-
-yaml
-Copier le code
 
 ---
 
@@ -104,13 +99,12 @@ Copier le code
 
 ## 4. Deployment
 
-```bash
 terraform init -upgrade
 terraform fmt -recursive
 terraform validate
 terraform plan -out=tfplan
 terraform apply "tfplan"
-✅ Expected outputs
+ Expected outputs
 bastion_public_ip
 
 private_vm_ip
@@ -154,8 +148,6 @@ Key Vault Audit Events visible
 
 CPU alerts (triggered >80% usage for 5 min)
 
-bash
-Copier le code
 # Check AMA agent
 systemctl status azuremonitoragent
 
@@ -171,32 +163,25 @@ All logs and metrics centralized in Log Analytics Workspace (LAW).
 Example queries:
 🔹 Syslog – Authentication Events
 
-kql
-Copier le code
+
 Syslog
 | where Facility in ("auth", "authpriv")
 | where TimeGenerated > ago(1h)
 | summarize count() by Computer, SeverityLevel, ProcessName
 🔹 Azure Activity – Subscription Operations
 
-kql
-Copier le code
 AzureActivity
 | where TimeGenerated > ago(1d)
 | project TimeGenerated, ResourceGroup, OperationName, Caller, ActivityStatus
 | order by TimeGenerated desc
 🔹 Key Vault – Access Audit
 
-kql
-Copier le code
 AzureDiagnostics
 | where ResourceType == "VAULTS"
 | where Category == "AuditEvent"
 | project TimeGenerated, OperationName, Identity, ResultDescription
 🔹 CPU Utilization
 
-kql
-Copier le code
 InsightsMetrics
 | where Namespace == "Processor"
 | where Name == "UtilizationPercentage"
@@ -219,16 +204,12 @@ InsightsMetrics
 8. Operations & Cost Control
 Update admin IP:
 
-hcl
-Copier le code
 my_ip_cidr = "<NEW_IP>/32"
 bash
 Copier le code
 terraform apply -auto-approve
 Destroy when done:
 
-bash
-Copier le code
 terraform destroy -auto-approve
 9. Deliverable Checklist
 [✔] Modular Terraform code (network, compute, keyvault, monitoring)
@@ -243,9 +224,10 @@ terraform destroy -auto-approve
 
 [✔] Cleanup plan included
 
+[✔] Dashboard on azure portal
+
 10. Example Outputs
-bash
-Copier le code
+
 bastion_admin_username     = "azureuser"
 bastion_private_key_path   = "./.ssh/bastion_id_rsa"
 bastion_public_ip          = "172.201.13.196"
@@ -254,16 +236,3 @@ private_vm_ip              = "10.0.2.4"
 private_vm_key_path        = "./.ssh/private_vm_id_rsa"
 keyvault_name              = "(disabled)"
 keyvault_uri               = "(disabled)"
-📸 Screenshots (to add)
-Azure Resource Group overview
-
-VNet + Subnets diagram
-
-Bastion SSH connection
-
-Private VM via ProxyJump
-
-AMA logs in Log Analytics
-
-KQL queries results
-
